@@ -155,18 +155,69 @@ All tests passed.
 
 ---
 
+## Remote agent (Linux / Jetson)
+
+The remote agent runs on the target Linux device. It acts as a TCP server and bridges each incoming connection to a real serial port.
+
+### Build (on the Linux device)
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
+Output: `build/serial_bridge_remote`
+
+### Configure
+
+Edit `remote_config.json`:
+
+```json
+{
+    "listen_ip": "0.0.0.0",
+    "ports": [
+        { "serial_device": "/dev/ttyUSB0", "tcp_port": 5000, "baud_rate": 115200 },
+        { "serial_device": "/dev/ttyUSB1", "tcp_port": 5001, "baud_rate": 9600   },
+        { "serial_device": "/dev/ttyUSB2", "tcp_port": 5002, "baud_rate": 57600  }
+    ]
+}
+```
+
+| Field           | Description                                     |
+|-----------------|-------------------------------------------------|
+| `listen_ip`     | Interface to bind on (`0.0.0.0` = all)          |
+| `serial_device` | Real serial port on the Linux device            |
+| `tcp_port`      | TCP port to listen on (must match host config)  |
+| `baud_rate`     | Baud rate to configure on the serial port       |
+
+Jetson hardware UARTs are typically `/dev/ttyTHS0`, `/dev/ttyTHS1`, etc.  
+USB-serial adapters appear as `/dev/ttyUSB0`, `/dev/ttyUSB1`, etc.
+
+### Run (remote)
+
+```bash
+./build/serial_bridge_remote remote_config.json
+```
+
+The agent listens on each configured port. When the Windows bridge connects it opens the mapped serial device, bridges traffic bidirectionally, then closes the device and waits for the next connection.
+
+---
+
 ## Project structure
 
 ```text
 ├── host/
-│   └── main.cpp              # Windows bridge (virtual COM <-> TCP)
+│   └── main.cpp              # Windows bridge (virtual COM <-> TCP client)
+├── remote/
+│   └── main.cpp              # Linux agent (TCP server <-> real serial port)
 ├── common/
-│   └── config.hpp            # JSON config parsing
+│   └── config.hpp            # JSON config parsing for both sides
 ├── test/
 │   ├── echo_server.py        # Fake remote device (TCP echo server)
 │   ├── test_bridge.py        # Automated test suite
 │   └── setup_com_ports.py   # Creates/removes com0com pairs from config
-├── host_config.json          # Production config
+├── host_config.json          # Windows bridge config
+├── remote_config.json        # Linux agent config
 ├── test_host_config.json     # Test config (localhost)
 └── CMakeLists.txt
 ```
