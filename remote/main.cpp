@@ -4,7 +4,6 @@
 // connected and closes it when the connection drops, ready for reconnect.
 
 #include <arpa/inet.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -14,11 +13,11 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cerrno>
 #include <cstring>
 #include <iostream>
-#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -29,23 +28,24 @@
 // Serial helpers
 // ---------------------------------------------------------------------------
 
-static speed_t baud_to_speed(int rate) {
-    switch (rate) {
-        case 9600:    return B9600;
-        case 19200:   return B19200;
-        case 38400:   return B38400;
-        case 57600:   return B57600;
-        case 115200:  return B115200;
-        case 230400:  return B230400;
-        case 460800:  return B460800;
-        case 921600:  return B921600;
-        case 1000000: return B1000000;
-        case 2000000: return B2000000;
-        default: throw std::runtime_error("Unsupported baud rate: " + std::to_string(rate));
-    }
-}
-
 static int open_serial(const std::string& device, int baud_rate) {
+    speed_t speed;
+    switch (baud_rate) {
+        case 9600:    speed = B9600;    break;
+        case 19200:   speed = B19200;   break;
+        case 38400:   speed = B38400;   break;
+        case 57600:   speed = B57600;   break;
+        case 115200:  speed = B115200;  break;
+        case 230400:  speed = B230400;  break;
+        case 460800:  speed = B460800;  break;
+        case 921600:  speed = B921600;  break;
+        case 1000000: speed = B1000000; break;
+        case 2000000: speed = B2000000; break;
+        default:
+            std::cerr << "[ERROR] Unsupported baud rate: " << baud_rate << "\n";
+            return -1;
+    }
+
     int fd = open(device.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (fd < 0) {
         std::cerr << "[ERROR] Cannot open " << device << ": " << strerror(errno) << "\n";
@@ -54,8 +54,6 @@ static int open_serial(const std::string& device, int baud_rate) {
 
     termios tty = {};
     tcgetattr(fd, &tty);
-
-    speed_t speed = baud_to_speed(baud_rate);
     cfsetispeed(&tty, speed);
     cfsetospeed(&tty, speed);
 
