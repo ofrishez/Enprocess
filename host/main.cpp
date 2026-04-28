@@ -202,7 +202,7 @@ static void tcp_to_serial(Bridge* b) {
 // ---------------------------------------------------------------------------
 
 int main(int argc, char* argv[]) {
-    const std::string config_path = (argc > 1) ? argv[1] : "host_config.json";
+    const std::string config_path = (argc > 1) ? argv[1] : "host_config.yaml";
 
     HostConfig cfg;
     try {

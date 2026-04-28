@@ -1,8 +1,0 @@
-{
-    "remote_ip": "127.0.0.1",
-    "ports": [
-        { "app_com_port": "COM10", "com_port": "COM11", "tcp_port": 5000, "baud_rate": 115200 },
-        { "app_com_port": "COM12", "com_port": "COM13", "tcp_port": 5001, "baud_rate": 9600   },
-        { "app_com_port": "COM14", "com_port": "COM15", "tcp_port": 5002, "baud_rate": 57600  }
-    ]
-}

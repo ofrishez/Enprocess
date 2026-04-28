@@ -208,7 +208,7 @@ int main(int argc, char* argv[]) {
     // Ignore SIGPIPE so broken TCP writes return EPIPE instead of crashing
     signal(SIGPIPE, SIG_IGN);
 
-    const std::string config_path = (argc > 1) ? argv[1] : "remote_config.json";
+    const std::string config_path = (argc > 1) ? argv[1] : "remote_config.yaml";
 
     RemoteConfig cfg;
     try {

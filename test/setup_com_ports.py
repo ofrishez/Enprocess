@@ -5,16 +5,17 @@ Usage:
     python setup_com_ports.py [--remove] [config_path]
 
     --remove      Remove all pairs listed in the config instead of creating them
-    config_path   Path to config JSON (default: ../test_host_config.json)
+    config_path   Path to config YAML (default: ../test_host_config.yaml)
 
 Must be run as Administrator.
 """
 
 import ctypes
-import json
 import subprocess
 import sys
 from pathlib import Path
+
+import yaml
 
 
 SETUPC_CANDIDATES = [
@@ -60,7 +61,6 @@ def create_pairs(setupc: Path, ports: list[dict]) -> None:
 
 
 def remove_pairs(setupc: Path, ports: list[dict]) -> None:
-    # List current pairs and match by port name
     _, listing = run(setupc, "list")
     print("Current pairs:\n" + (listing or "  (none)") + "\n")
 
@@ -69,11 +69,9 @@ def remove_pairs(setupc: Path, ports: list[dict]) -> None:
         bridge = p.get("com_port")
         if not app or not bridge:
             continue
-        # Find the pair index that contains either port name
         pair_index = None
         for line in listing.splitlines():
             if app in line or bridge in line:
-                # Line format: "       0 CNCA0 PortName=COM3"
                 parts = line.split()
                 if parts and parts[0].isdigit():
                     pair_index = parts[0]
@@ -91,7 +89,7 @@ def main() -> None:
     remove = "--remove" in args
     args = [a for a in args if a != "--remove"]
 
-    config_path = Path(args[0]) if args else Path(__file__).parent.parent / "test_host_config.json"
+    config_path = Path(args[0]) if args else Path(__file__).parent.parent / "test_host_config.yaml"
     if not config_path.exists():
         print(f"Config not found: {config_path}")
         sys.exit(1)
@@ -105,7 +103,7 @@ def main() -> None:
         print("com0com not found. Install it from https://sourceforge.net/projects/com0com/")
         sys.exit(1)
 
-    config = json.loads(config_path.read_text())
+    config = yaml.safe_load(config_path.read_text())
     ports = config["ports"]
 
     if remove:

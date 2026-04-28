@@ -3,14 +3,15 @@ Simulates the remote device: a TCP server that echoes every byte it receives.
 Reads port numbers from the bridge config file.
 
 Usage:
-    python echo_server.py [config_path]   (default: ../host_config.json)
+    python echo_server.py [config_path]   (default: ../host_config.yaml)
 """
 
-import json
 import socket
 import sys
 import threading
 from pathlib import Path
+
+import yaml
 
 
 def handle_client(conn: socket.socket, addr, tcp_port: int) -> None:
@@ -45,8 +46,8 @@ def listen(tcp_port: int) -> None:
 
 
 def main() -> None:
-    config_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent.parent / "host_config.json"
-    config = json.loads(config_path.read_text())
+    config_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent.parent / "host_config.yaml"
+    config = yaml.safe_load(config_path.read_text())
     ports = [p["tcp_port"] for p in config["ports"]]
 
     print(f"Echo server starting on ports {ports}  (Ctrl+C to stop)")
