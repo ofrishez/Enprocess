@@ -105,50 +105,35 @@ struct Bridge {
 // ---------------------------------------------------------------------------
 
 static void serial_to_tcp(Bridge* b) {
-    SetCommMask(b->hCom, EV_RXCHAR);
-
-    OVERLAPPED ov_wait = {};
-    ov_wait.hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    // ReadFile blocks until at least one byte arrives or 200 ms passes.
+    // This works on both real and virtual (com0com) ports unlike WaitCommEvent.
+    COMMTIMEOUTS ct = {};
+    ct.ReadIntervalTimeout        = MAXDWORD;
+    ct.ReadTotalTimeoutMultiplier = MAXDWORD;
+    ct.ReadTotalTimeoutConstant   = 200;
+    SetCommTimeouts(b->hCom, &ct);
 
     constexpr DWORD BUF = 65536;
     auto buf = std::make_unique<char[]>(BUF);
 
-    while (b->running) {
-        DWORD evt = 0;
-        ResetEvent(ov_wait.hEvent);
+    OVERLAPPED ov = {};
+    ov.hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
 
-        if (!WaitCommEvent(b->hCom, &evt, &ov_wait)) {
+    while (b->running) {
+        DWORD got = 0;
+        ResetEvent(ov.hEvent);
+
+        if (!ReadFile(b->hCom, buf.get(), BUF, &got, &ov)) {
             if (GetLastError() != ERROR_IO_PENDING) {
-                std::cerr << "[" << b->label << "] WaitCommEvent failed\n";
                 b->running = false;
                 break;
             }
-            // Wait up to 200 ms so we can re-check b->running
-            DWORD w = WaitForSingleObject(ov_wait.hEvent, 200);
-            if (w == WAIT_TIMEOUT) continue;
-            DWORD dummy = 0;
-            GetOverlappedResult(b->hCom, &ov_wait, &dummy, FALSE);
+            WaitForSingleObject(ov.hEvent, INFINITE);
+            if (!GetOverlappedResult(b->hCom, &ov, &got, FALSE)) {
+                b->running = false;
+                break;
+            }
         }
-
-        if (!(evt & EV_RXCHAR)) continue;
-
-        // How many bytes are sitting in the hardware buffer?
-        COMSTAT cs = {};
-        DWORD   err = 0;
-        ClearCommError(b->hCom, &err, &cs);
-        DWORD avail = cs.cbInQue;
-        if (avail == 0) continue;
-        avail = std::min(avail, BUF);
-
-        OVERLAPPED ov_read = {};
-        ov_read.hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-
-        DWORD got = 0;
-        if (!ReadFile(b->hCom, buf.get(), avail, &got, &ov_read)) {
-            if (GetLastError() == ERROR_IO_PENDING)
-                GetOverlappedResult(b->hCom, &ov_read, &got, TRUE);
-        }
-        CloseHandle(ov_read.hEvent);
 
         if (got == 0) continue;
 
@@ -162,7 +147,7 @@ static void serial_to_tcp(Bridge* b) {
         }
     }
 
-    CloseHandle(ov_wait.hEvent);
+    CloseHandle(ov.hEvent);
     std::cout << "[" << b->label << "] serial->tcp thread exiting\n";
 }
 

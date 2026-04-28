@@ -145,7 +145,7 @@ def phase2_full_loop(config: dict, config_path: Path) -> bool:
             payload = f"LOOP_{app_com}_{'y' * 64}".encode()
 
             received = com_roundtrip(app_com, baud, payload)
-            tag = f"{app_com} -> COM{p['com_port']} -> TCP:{tcp_port}"
+            tag = f"{app_com} -> {p['com_port']} -> TCP:{tcp_port}"
 
             if received == payload:
                 print(f"  {PASS}  {tag}  {len(payload)} bytes round-tripped")
